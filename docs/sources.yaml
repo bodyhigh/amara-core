@@ -1,0 +1,14 @@
+sources:
+  - name: amara-gateway
+    type: local
+    path: /mnt/user/appdata/agent-mvp
+    include:
+      - "README.md"
+      - "nginx/conf.d/**/*.conf"
+      - "nginx/html/**/*.html"
+      - "api/**/*.js"
+      - "routes/**/*.js"
+      - "scripts/**/*.sh"
+    exclude:
+      - "**/node_modules/**"
+      - "**/.env*"
