@@ -1,0 +1,53 @@
+entries:
+  - context_delta:
+      status:
+        summary: >
+          Seed entry: initialized orchestrator repo (amara-core).
+        last_updated: 2025-08-26
+      decisions:
+        - date: 2025-08-26
+          what: "Split into amara-core and amara-gateway."
+          why: "Separate concerns for orchestration vs. gateway."
+      next_actions:
+        - who: me
+          what: "Add schema validator and append helper"
+          due: 2025-08-26
+      risks:
+        - "Accidental schema drift; mitigation: pre-commit validator"
+  - context_delta:
+      status:
+        summary: >
+          Test append entry: verifying helper wrap + validator.
+        last_updated: 2025-08-26
+      decisions:
+        - date: 2025-08-26
+          what: "Validator accepted YAML dates"
+          why: "PyYAML auto-converts ISO strings"
+      next_actions:
+        - who: me
+          what: "Append a new test entry"
+          due: 2025-08-26
+        - who: assistant
+          what: "Check that schema passes"
+          due: 2025-08-26
+      risks:
+        - "None — test only"
+
+  - context_delta:
+      status:
+        summary: >
+          Test append entry: verifying helper wrap + validator (fixed).
+        last_updated: 2025-08-26
+      decisions:
+        - date: 2025-08-26
+          what: "Validator accepts YAML dates"
+          why: "PyYAML auto-converts ISO strings"
+      next_actions:
+        - who: me
+          what: "Append new test entry with helper"
+          due: 2025-08-26
+        - who: assistant
+          what: "Confirm schema passes after append"
+          due: 2025-08-26
+      risks:
+        - "None — test only"

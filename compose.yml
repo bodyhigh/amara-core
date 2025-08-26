@@ -1,0 +1,38 @@
+# docker compose.yml
+# Project: Amara / amara-core
+# Purpose: Vector DB + Python dev runner for orchestration (doc sync, embeddings)
+# Notes:
+# - Compose v2 syntax (no "version" key)
+# - No public ports by default; uncomment as needed during local debugging
+
+name: amara-core
+
+networks:
+  amara-net: {}
+
+volumes:
+  qdrant_data: {}
+
+services:
+  qdrant:
+    image: qdrant/qdrant:1.12.4
+    restart: unless-stopped
+    networks: [amara-net]
+    volumes:
+      - qdrant_data:/qdrant/storage
+    # Uncomment for local inspection:
+    # ports:
+    #   - "6333:6333"  # UI/API at http://localhost:6333
+
+  # Lightweight Python runner for scripts (sync, embed, etc.)
+  # Use: docker compose run --rm amara-core python3 scripts/sync_repos.py
+  amara-core:
+    image: python:3.11-slim
+    working_dir: /app
+    networks: [amara-net]
+    volumes:
+      - ./:/app:rw
+    # Keep container alive for execs; prefer `docker compose run --rm` for one-offs
+    command: sleep infinity
+    # Only starts if you target the profile or run it directly
+    profiles: ["dev"]

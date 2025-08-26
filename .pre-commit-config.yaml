@@ -1,4 +1,5 @@
 repos:
+  # General hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
@@ -6,3 +7,38 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+
+  # Local repo checks
+  - repo: local
+    hooks:
+      - id: validate-amara-script-headers
+        name: Validate Amara script headers
+        entry: python3 scripts/validate_script_headers.py
+        language: system
+        types_or: [python, shell, javascript]
+        pass_filenames: true
+
+      - id: forbid-docker-compose-v1-cli
+        name: Forbid deprecated Compose v1 CLI
+        entry: python3 scripts/forbid_strings.py --pattern 'docker-compose' --message 'Use `docker compose` (Compose v2).'
+        language: system
+        types: [text]
+        exclude: \.venv/|^docs/context/|^docs/vendor/|^\.pre-commit-config\.yaml$
+
+      - id: forbid-secrets-patterns
+        name: Forbid common secret patterns
+        entry: python3 scripts/forbid_strings.py --pattern '(^|[^A-Za-z0-9])sk-[A-Za-z0-9]+' --message 'Possible provider key; use env only.'
+        language: system
+        types: [text]
+        exclude: \.venv/|^docs/context/|^docs/vendor/
+
+  - repo: local
+    hooks:
+      - id: validate-context-delta-log
+        name: Validate context_delta.log.yaml syntax
+        entry: python3 -c "import sys, yaml; yaml.safe_load(open('docs/context/context_delta.log.yaml'))"
+        language: system
+        files: ^docs/context/context_delta\.log\.yaml$
+
+default_language_version:
+  python: python3

@@ -1,3 +1,8 @@
+# requirements-dev.txt
 pyyaml==6.0.2
 jsonschema==4.23.0
 pre-commit==3.7.1
+# Future (commented until embed step is added)
+# sentence-transformers
+# qdrant-client
+# torch

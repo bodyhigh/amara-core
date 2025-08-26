@@ -1,0 +1,17 @@
+status:
+  summary: >
+    Test append entry: verifying helper wrap + validator (fixed).
+  last_updated: 2025-08-26
+decisions:
+  - date: 2025-08-26
+    what: "Validator accepts YAML dates"
+    why: "PyYAML auto-converts ISO strings"
+next_actions:
+  - who: me
+    what: "Append new test entry with helper"
+    due: 2025-08-26
+  - who: assistant
+    what: "Confirm schema passes after append"
+    due: 2025-08-26
+risks:
+  - "None — test only"

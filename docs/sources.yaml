@@ -1,7 +1,8 @@
+# Each source becomes a subfolder in docs/context/
 sources:
   - name: amara-gateway
     type: local
-    path: /mnt/user/appdata/agent-mvp
+    path: /mnt/user/appdata/amara-gateway
     include:
       - "README.md"
       - "nginx/conf.d/**/*.conf"
@@ -12,3 +13,11 @@ sources:
     exclude:
       - "**/node_modules/**"
       - "**/.env*"
+
+# Example for future remote repo (disabled for now)
+#  - name: some-remote
+#    type: git
+#    url: git@github.com:you/other-repo.git
+#    ref: main
+#    include: ["docs/**/*.md", "README.md"]
+#    exclude: ["**/vendor/**", "**/.venv/**"]

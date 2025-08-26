@@ -6,3 +6,7 @@ __pycache__/
 .cache/
 dist/
 node_modules/
+
+tmp_delta.yaml
+/tmp/_delta_ok.yaml
+/tmp/_delta_bad.yaml
