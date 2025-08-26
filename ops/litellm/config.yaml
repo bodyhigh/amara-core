@@ -1,0 +1,23 @@
+# ops/litellm/config.yaml
+model_list:
+  - model_name: local/llama3.1-8b
+    litellm_params:
+      model: ollama/llama3.1:8b
+      api_base: http://ollama:11434
+      api_key: ollama
+
+  - model_name: openai/main
+    litellm_params:
+      # Put the **exact** OpenAI model you have access to:
+      model: openai/gpt-4o          # e.g., gpt-4o, gpt-4.1, etc.
+      # api_key is read from env: OPENAI_API_KEY
+
+model_groups:
+  - name: chat-default
+    models: [local/llama3.1-8b, openai/main]
+    fallback: true
+
+router_settings:
+  routing_strategy: latency_based   # or: weighted / cost
+  timeout: 120
+  max_retries: 1

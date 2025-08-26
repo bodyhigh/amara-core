@@ -1,38 +1,146 @@
-# docker compose.yml
-# Project: Amara / amara-core
-# Purpose: Vector DB + Python dev runner for orchestration (doc sync, embeddings)
+# compose.yml
+#
+# Usage:
+#   docker compose up -d                         # core stack
+#   docker compose --profile proxy up -d        # include nginx proxy
+#
 # Notes:
-# - Compose v2 syntax (no "version" key)
-# - No public ports by default; uncomment as needed during local debugging
-
-name: amara-core
-
-networks:
-  amara-net: {}
-
-volumes:
-  qdrant_data: {}
+# - Reads env from .env (kept out of git).
+# - Qdrant pinned to v1.12.4 per project bundle; pin others after testing.
+# - Healthchecks reduce "first call fails" races.
 
 services:
   qdrant:
-    image: qdrant/qdrant:1.12.4
+    image: qdrant/qdrant:v1.12.4
+    container_name: amara-qdrant
     restart: unless-stopped
-    networks: [amara-net]
+    ports:
+      - "${QDRANT_PORT-6333}:6333"
+    environment:
+      # Disable mmap on low-RAM hosts by uncommenting:
+      # QDRANT__STORAGE__USE_MMAP: "false"
+      QDRANT__SERVICE__GRPC_PORT: 6334
     volumes:
       - qdrant_data:/qdrant/storage
-    # Uncomment for local inspection:
-    # ports:
-    #   - "6333:6333"  # UI/API at http://localhost:6333
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:6333/readyz >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
-  # Lightweight Python runner for scripts (sync, embed, etc.)
-  # Use: docker compose run --rm amara-core python3 scripts/sync_repos.py
-  amara-core:
-    image: python:3.11-slim
-    working_dir: /app
-    networks: [amara-net]
+  ollama:
+    image: ollama/ollama:latest
+    container_name: amara-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT-11434}:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE-8h}
     volumes:
-      - ./:/app:rw
-    # Keep container alive for execs; prefer `docker compose run --rm` for one-offs
-    command: sleep infinity
-    # Only starts if you target the profile or run it directly
-    profiles: ["dev"]
+      - ollama_data:/root/.ollama
+    healthcheck:
+      # Uses built-in CLI for a reliable check
+      test:
+        [
+          "CMD-SHELL",
+          "OLLAMA_HOST=127.0.0.1:11434 ollama ps >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
+
+  litellm:
+    image: ghcr.io/berriai/litellm:latest
+    container_name: amara-litellm
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./ops/litellm/config.yaml:/etc/litellm/config.yaml:ro
+    environment:
+      - LITELLM_PROXY_PORT=${LITELLM_PORT-4000}
+      - LITELLM_MASTER_KEY=${LITELLM_PROXY_KEY}
+      # If/when you add a routing config and cloud fallback:
+      - LITELLM_CONFIG=/etc/litellm/config.yaml
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    command: >
+      litellm
+      --port ${LITELLM_PORT-4000}
+      --host 0.0.0.0
+    ports:
+      - "${LITELLM_PORT-4000}:4000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:4000/health >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  # GitHub MCP adapter (FastAPI)
+  mcp-github:
+    build:
+      context: ./ops/mcp/github
+    container_name: amara-mcp-github
+    restart: unless-stopped
+    environment:
+      - GITHUB_OWNER=${GITHUB_OWNER}
+      - GITHUB_REPO=${GITHUB_REPO}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    ports:
+      - "${MCP_GITHUB_PORT-8088}:8088"
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  # Optional: n8n for orchestrating specialist agents (webhooks)
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: amara-n8n
+    restart: unless-stopped
+    environment:
+      - GENERIC_TIMEZONE=${TZ-America/Los_Angeles}
+      - N8N_HOST=localhost
+      - N8N_PROTOCOL=http
+      - N8N_PORT=5678
+      - N8N_DIAGNOSTICS_ENABLED=false
+    ports:
+      - "${N8N_PORT-5678}:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      litellm:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
+  # Optional: reverse proxy to front selected services under one port
+  nginx:
+    image: nginx:alpine
+    container_name: amara-nginx
+    profiles: ["proxy"]
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT-8080}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      litellm:
+        condition: service_started
+      n8n:
+        condition: service_started
+
+volumes:
+  qdrant_data:
+  ollama_data:
+  n8n_data:

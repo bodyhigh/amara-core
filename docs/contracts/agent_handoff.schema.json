@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://amara.local/schemas/agent_handoff.schema.json",
+  "title": "Amara Agent Handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["task_id", "objective", "deliverables", "inputs"],
+  "properties": {
+    "task_id": { "type": "string" },
+    "priority": { "type": "string", "enum": ["p0", "p1", "p2"], "default": "p1" },
+    "objective": { "type": "string" },
+    "constraints": { "type": "array", "items": { "type": "string" } },
+    "deliverables": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "output_channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "target"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["github_issue_comment", "pr_comment", "artifact_path", "webhook"]
+        },
+        "target": { "type": "string" }
+      }
+    }
+  }
+}

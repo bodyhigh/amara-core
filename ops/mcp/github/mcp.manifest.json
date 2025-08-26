@@ -1,0 +1,64 @@
+{
+  "name": "github",
+  "version": "0.1.0",
+  "description": "GitHub tools for Amara via MCP-style JSON endpoints.",
+  "endpoint": "http://localhost:8088",
+  "tools": [
+    {
+      "name": "listIssues",
+      "method": "POST",
+      "path": "/tools/listIssues",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "state": { "enum": ["open", "closed", "all"], "default": "open" },
+          "labels": { "type": "string", "description": "Comma-separated label names" },
+          "per_page": { "type": "integer", "default": 20 }
+        }
+      }
+    },
+    {
+      "name": "createIssue",
+      "method": "POST",
+      "path": "/tools/createIssue",
+      "input_schema": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "labels": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Array of label names"
+          }
+        }
+      }
+    },
+    {
+      "name": "commentIssue",
+      "method": "POST",
+      "path": "/tools/commentIssue",
+      "input_schema": {
+        "type": "object",
+        "required": ["issue_number", "body"],
+        "properties": {
+          "issue_number": { "type": "integer" },
+          "body": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "listPulls",
+      "method": "POST",
+      "path": "/tools/listPulls",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "state": { "enum": ["open", "closed", "all"], "default": "open" },
+          "per_page": { "type": "integer", "default": 20 }
+        }
+      }
+    }
+  ]
+}

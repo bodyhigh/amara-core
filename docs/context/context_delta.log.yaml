@@ -17,7 +17,7 @@ entries:
   - context_delta:
       status:
         summary: >
-          Test append entry: verifying helper wrap + validator.
+          Test append entry via Makefile.
         last_updated: 2025-08-26
       decisions:
         - date: 2025-08-26
@@ -36,18 +36,34 @@ entries:
   - context_delta:
       status:
         summary: >
-          Test append entry: verifying helper wrap + validator (fixed).
+          Invalid entry (missing risks).
         last_updated: 2025-08-26
       decisions:
         - date: 2025-08-26
-          what: "Validator accepts YAML dates"
-          why: "PyYAML auto-converts ISO strings"
+          what: "Bad entry for test"
+          why: "Missing risks"
       next_actions:
         - who: me
-          what: "Append new test entry with helper"
+          what: "This should fail schema"
           due: 2025-08-26
-        - who: assistant
-          what: "Confirm schema passes after append"
-          due: 2025-08-26
-      risks:
-        - "None — test only"
+
+context_delta:
+  status:
+    summary: >
+      Added a YAML-driven repo sync tool (sync_repos.py), an env/deps sanity checker,
+      and an optional pretty logger for shell scripts. Sync is dry-run by default and
+      writes an artifacts/sync.report.json.
+    last_updated: 2025-08-26
+  decisions:
+    - date: 2025-08-26
+      what: Stage cross-repo documents into docs/context via an allowlist-defined sync tool.
+      why: Deterministic inputs for RAG; keeps history reviewable.
+  next_actions:
+    - who: me
+      what: Create docs/sources.yaml (or update), run `make sync` (dry), inspect artifacts/sync.report.json; then run with SYNC_DRY=0.
+      due: 2025-08-27
+    - who: me
+      what: Run `make env-check` before embeddings to avoid surprise failures.
+      due: 2025-08-27
+  risks:
+    - Over-inclusion of files; mitigation: strict allowlist + deny patterns, review sync.report.json before real copy.
