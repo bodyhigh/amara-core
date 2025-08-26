@@ -4,5 +4,5 @@ jsonschema==4.23.0
 pre-commit==3.7.1
 # Future (commented until embed step is added)
 # sentence-transformers
-# qdrant-client
+qdrant-client
 # torch

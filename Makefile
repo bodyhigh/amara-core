@@ -1,7 +1,7 @@
 .PHONY: help venv-install sync verify context-delta validate-log seed-log test-log \
 qdrant-up qdrant-down qdrant-logs embed embed-dry env-check \
 llm-up llm-pull llm-smoke mcp-github-up mcp-github-smoke validate-agent-handoff venv-which validate-agent-handoff \
-sync-dry sync-apply embed-openai qdrant-wipe
+sync-dry sync-apply embed-openai qdrant-wipe qdrant-init qdrant-list
 
 # Defaults (override like: make PY=python3.11)
 SHELL := /bin/sh
@@ -156,9 +156,6 @@ mcp-github-smoke:
 		-H "Content-Type: application/json" \
 		-d '{"state":"open","per_page":5}' | jq '.[].number, .[].title' | head -n 10
 
-validate-agent-handoff:
-	. .venv/bin/activate && python -c "import json,sys; from jsonschema import validate, Draft7Validator; s=json.load(open('docs/contracts/agent_handoff.schema.json')); Draft7Validator.check_schema(s); print('agent_handoff.schema.json OK')"
-
 venv-which:
 	@echo "VIRTUAL_ENV=$(VIRTUAL_ENV)"
 	@echo "python -> $$(command -v python)"
@@ -166,13 +163,7 @@ venv-which:
 	@pip -V
 
 validate-agent-handoff:
-	. $(VENV)/bin/activate && python - <<'PY'
-import json, sys
-from jsonschema import Draft7Validator
-schema = json.load(open('docs/contracts/agent_handoff.schema.json'))
-Draft7Validator.check_schema(schema)
-print("agent_handoff.schema.json OK")
-PY
+	. $(VENV)/bin/activate && $(PY) -c "import json; from jsonschema import Draft7Validator as V; s=json.load(open('docs/contracts/agent_handoff.schema.json','r',encoding='utf-8')); V.check_schema(s); print('agent_handoff.schema.json OK')"
 
 sync-dry:
 	. $(VENV)/bin/activate && SYNC_DRY=1 $(PY) scripts/sync_repos.py && jq . artifacts/sync.report.json | head -n 60
@@ -186,3 +177,9 @@ embed-openai:
 # Danger: wipes staged sources (not Qdrant data)
 qdrant-wipe:
 	rm -rf docs/context/sources && mkdir -p docs/context/sources
+
+qdrant-init:
+	. $(VENV)/bin/activate && $(PY) scripts/qdrant_init.py
+
+qdrant-list:
+	curl -fsS http://localhost:$${QDRANT_PORT:-6333}/collections | jq .
