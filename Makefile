@@ -1,6 +1,7 @@
 .PHONY: help venv-install sync verify context-delta validate-log seed-log test-log \
 qdrant-up qdrant-down qdrant-logs embed embed-dry env-check \
-llm-up llm-pull llm-smoke mcp-github-up mcp-github-smoke validate-agent-handoff
+llm-up llm-pull llm-smoke mcp-github-up mcp-github-smoke validate-agent-handoff venv-which validate-agent-handoff \
+sync-dry sync-apply embed-openai qdrant-wipe
 
 # Defaults (override like: make PY=python3.11)
 SHELL := /bin/sh
@@ -32,8 +33,10 @@ venv-install:
 	$(PY) -m venv $(VENV)
 	. $(VENV)/bin/activate && pip install -U pip -r requirements-dev.txt && pre-commit install
 
+# Allow 'make sync DRY=1' or 'make sync SYNC_DRY=0'
 sync:
-	. $(VENV)/bin/activate && $(PY) scripts/sync_repos.py
+	. $(VENV)/bin/activate && SYNC_DRY=$(DRY) $(PY) scripts/sync_repos.py
+
 
 verify:
 	pre-commit run --all-files
@@ -155,3 +158,31 @@ mcp-github-smoke:
 
 validate-agent-handoff:
 	. .venv/bin/activate && python -c "import json,sys; from jsonschema import validate, Draft7Validator; s=json.load(open('docs/contracts/agent_handoff.schema.json')); Draft7Validator.check_schema(s); print('agent_handoff.schema.json OK')"
+
+venv-which:
+	@echo "VIRTUAL_ENV=$(VIRTUAL_ENV)"
+	@echo "python -> $$(command -v python)"
+	@python -c "import sys; print('sys.executable =', sys.executable)"
+	@pip -V
+
+validate-agent-handoff:
+	. $(VENV)/bin/activate && python - <<'PY'
+import json, sys
+from jsonschema import Draft7Validator
+schema = json.load(open('docs/contracts/agent_handoff.schema.json'))
+Draft7Validator.check_schema(schema)
+print("agent_handoff.schema.json OK")
+PY
+
+sync-dry:
+	. $(VENV)/bin/activate && SYNC_DRY=1 $(PY) scripts/sync_repos.py && jq . artifacts/sync.report.json | head -n 60
+
+sync-apply:
+	. $(VENV)/bin/activate && SYNC_DRY=0 $(PY) scripts/sync_repos.py
+
+embed-openai:
+	EMBED_MODE=openai $(PY) scripts/embed.py
+
+# Danger: wipes staged sources (not Qdrant data)
+qdrant-wipe:
+	rm -rf docs/context/sources && mkdir -p docs/context/sources

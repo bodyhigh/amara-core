@@ -5,9 +5,12 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read # allow sync to git clone with default GITHUB_TOKEN
+
 jobs:
   pre-commit:
-    name: Run pre-commit hooks
+    name: pre-commit (required)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,28 +22,36 @@ jobs:
       - name: Run hooks
         run: pre-commit run --all-files
 
-  sync:
-    name: Dry-run repo sync
+  sync-dry:
+    name: Sync allowlist (dry)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Run sync (dry)
-        run: make sync DRY=1
-
-  embed:
-    name: Embed (dry-run, no Qdrant)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Install deps
+        run: pip install pyyaml
+      - name: Dry sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SYNC_DRY: "1"
+        run: python scripts/sync_repos.py
+      - name: Upload sync report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-report
+          path: artifacts/sync.report.json
+
+  embed-dry:
+    name: Embed (dry)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps (best-effort)
         run: pip install -r requirements.txt || true
-      - name: Run embed dry
-        run: make embed DRY=1
+      - name: Embed dry
+        run: python scripts/embed.py

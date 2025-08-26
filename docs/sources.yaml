@@ -1,8 +1,29 @@
-# Each source becomes a subfolder in docs/context/
+# Each source becomes a subfolder in docs/context/<name>
 sources:
-  - name: amara-gateway
+  - name: amara-core
     type: local
-    path: /mnt/user/appdata/amara-gateway
+    path: .
+    include:
+      - "README.md"
+      - "docs/context/**/*.yaml"
+      - "scripts/**/*.py"
+      - "scripts/**/*.sh"
+      - "ops/mcp/github/**/*.py"
+      - "ops/mcp/github/mcp.manifest.json"
+      - "Makefile"
+      - "compose.yml"
+      - "nginx.conf"
+    exclude:
+      - "**/.venv/**"
+      - "**/__pycache__/**"
+      - "artifacts/**"
+      - "node_modules/**"
+      - ".git/**"
+
+  - name: amara-gateway
+    type: git
+    url: https://github.com/bodyhigh/amara-gateway.git
+    ref: main
     include:
       - "README.md"
       - "nginx/conf.d/**/*.conf"
@@ -13,11 +34,27 @@ sources:
     exclude:
       - "**/node_modules/**"
       - "**/.env*"
+      - ".git/**"
+      - "**/dist/**"
+      - "**/build/**"
 
-# Example for future remote repo (disabled for now)
-#  - name: some-remote
-#    type: git
-#    url: git@github.com:you/other-repo.git
-#    ref: main
-#    include: ["docs/**/*.md", "README.md"]
-#    exclude: ["**/vendor/**", "**/.venv/**"]
+  - name: project-glidepath
+    type: git
+    url: https://github.com/bodyhigh/project-glidepath.git
+    ref: main
+    include: ["docs/**/*.md", "README.md"]
+    exclude: ["**/vendor/**", "**/.venv/**", "**/node_modules/**", ".git/**"]
+
+  - name: manifesting-api
+    type: git
+    url: https://github.com/bodyhigh/manifesting-api.git
+    ref: main
+    include: ["docs/**/*.md", "README.md"]
+    exclude: ["**/vendor/**", "**/.venv/**", "**/node_modules/**", ".git/**"]
+
+  - name: manifesting-ui
+    type: git
+    url: https://github.com/bodyhigh/manifesting-ui.git
+    ref: main
+    include: ["docs/**/*.md", "README.md"]
+    exclude: ["**/vendor/**", "**/.venv/**", "**/node_modules/**", ".git/**"]
