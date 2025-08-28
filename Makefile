@@ -1,13 +1,20 @@
 .PHONY: help venv-install sync verify context-delta validate-log seed-log test-log \
 qdrant-up qdrant-down qdrant-logs embed embed-dry env-check \
 llm-up llm-pull llm-smoke mcp-github-up mcp-github-smoke validate-agent-handoff venv-which validate-agent-handoff \
-sync-dry sync-apply embed-openai qdrant-wipe qdrant-init qdrant-list
+sync-dry sync-apply embed-openai qdrant-wipe qdrant-init qdrant-list qdrant-info qdrant-count \
+print-env embed-openai-upsert embed-logs
 
 # Defaults (override like: make PY=python3.11)
 SHELL := /bin/sh
 PY ?= python3
 COMPOSE ?= docker compose
 VENV ?= .venv
+
+ifneq (,$(wildcard .env))
+  include .env
+  export
+endif
+
 
 help:
 	@echo "Targets:"
@@ -183,3 +190,25 @@ qdrant-init:
 
 qdrant-list:
 	curl -fsS http://localhost:$${QDRANT_PORT:-6333}/collections | jq .
+
+qdrant-info:
+	@curl -fsS "http://localhost:$${QDRANT_PORT:-6333}/collections/$${QDRANT_COLLECTION:-amara_docs}" | jq .
+
+qdrant-count:
+	@curl -fsS -X POST \
+	  "http://localhost:$${QDRANT_PORT:-6333}/collections/$${QDRANT_COLLECTION:-amara_docs}/points/count" \
+	  -H "Content-Type: application/json" \
+	  -d '{"exact":true}' | jq .
+
+print-env:
+	@echo "From make (autoloaded .env):"
+	@echo "OPENAI_API_KEY=$${OPENAI_API_KEY:+<set>}"
+	@echo "EMBED_MODE=$(EMBED_MODE)"
+	@echo "EMBED_QDRANT_UPSERT=$(EMBED_QDRANT_UPSERT)"
+	@echo "QDRANT_URL=$(QDRANT_URL)"
+	@echo "QDRANT_COLLECTION=$(QDRANT_COLLECTION)"
+
+embed-openai-upsert:
+	@mkdir -p artifacts/logs
+	@echo "[embed] starting at $$(date)"
+	@EMBED_MODE=openai EMBED_QDRANT_UPSERT=1 $(PY) scripts/embed.py 2>&1 | tee artifacts/logs/embed.$$(date +%Y%m%d-%H%M%S).log
