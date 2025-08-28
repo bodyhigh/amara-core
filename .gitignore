@@ -10,3 +10,8 @@ node_modules/
 tmp_delta.yaml
 /tmp/_delta_ok.yaml
 /tmp/_delta_bad.yaml
+
+# Build/run logs
+artifacts/logs/
+# (Optional) any other logs generated under artifacts
+artifacts/*.log
