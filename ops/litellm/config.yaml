@@ -8,9 +8,8 @@ model_list:
 
   - model_name: openai/main
     litellm_params:
-      # Put the **exact** OpenAI model you have access to:
-      model: openai/gpt-4o          # e.g., gpt-4o, gpt-4.1, etc.
-      # api_key is read from env: OPENAI_API_KEY
+      model: openai/gpt-4o   # adjust to the exact model you have enabled
+      # api_key comes from env OPENAI_API_KEY
 
 model_groups:
   - name: chat-default
@@ -18,6 +17,8 @@ model_groups:
     fallback: true
 
 router_settings:
-  routing_strategy: latency_based   # or: weighted / cost
+  routing_strategy: latency_based
   timeout: 120
-  max_retries: 1
+  max_retries: 2
+  retry_codes: [408, 429, 500, 502, 503, 504]
+  retry_interval: 1.0

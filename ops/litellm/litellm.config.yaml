@@ -1,0 +1,28 @@
+# # Model routing & safety
+# general_settings:
+#   timeout: 120           # seconds
+#   num_retries: 2
+#   retry_policy: jitter
+
+# litellm_settings:
+#   telemetry: false
+#   drop_params: ["user"]  # keep PII out of provider logs
+
+# # Define providers you intend to use; keep keys in env (not here)
+# model_list:
+#   - model_name: gpt-4o-mini
+#     litellm_params:
+#       model: openai/gpt-4o-mini
+#   - model_name: gpt-4o
+#     litellm_params:
+#       model: openai/gpt-4o
+
+# router_settings:
+#   default_model: gpt-4o-mini
+#   # simple fallback chain
+#   fallbacks:
+#     gpt-4o: [gpt-4o-mini]
+# rate_limits:
+#   # soft guardrails; tune later
+#   rpm: 1800
+#   tpm: 150000

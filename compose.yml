@@ -1,13 +1,13 @@
 # compose.yml
 #
 # Usage:
-#   docker compose up -d                         # core stack
+#   docker compose up -d
 #   docker compose --profile proxy up -d        # include nginx proxy
 #
 # Notes:
-# - Reads env from .env (kept out of git).
-# - Qdrant pinned to v1.12.4 per project bundle; pin others after testing.
-# - Healthchecks reduce "first call fails" races.
+# - Uses ${VAR:-default} so defaults apply even if env var is set but empty.
+# - Qdrant healthcheck omitted (we validate via /readyz from host).
+# - LiteLLM built locally for amd64; internal-only; reach via NGINX /api/llm/.
 
 services:
   qdrant:
@@ -15,36 +15,24 @@ services:
     container_name: amara-qdrant
     restart: unless-stopped
     ports:
-      - "${QDRANT_PORT-6333}:6333"
+      - "${QDRANT_PORT:-6333}:6333"
     environment:
-      # Disable mmap on low-RAM hosts by uncommenting:
-      # QDRANT__STORAGE__USE_MMAP: "false"
+      # QDRANT__STORAGE__USE_MMAP: "false"   # enable on low-RAM hosts if needed
       QDRANT__SERVICE__GRPC_PORT: 6334
     volumes:
       - qdrant_data:/qdrant/storage
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget -qO- http://localhost:6333/readyz >/dev/null 2>&1 || exit 1",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 10s
 
   ollama:
     image: ollama/ollama:latest
     container_name: amara-ollama
     restart: unless-stopped
     ports:
-      - "${OLLAMA_PORT-11434}:11434"
+      - "${OLLAMA_PORT:-11434}:11434"
     environment:
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE-8h}
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      # Uses built-in CLI for a reliable check
       test:
         [
           "CMD-SHELL",
@@ -56,7 +44,9 @@ services:
       start_period: 45s
 
   litellm:
-    image: ghcr.io/berriai/litellm:latest
+    build:
+      context: ./ops/litellm
+      dockerfile: Dockerfile
     container_name: amara-litellm
     restart: unless-stopped
     depends_on:
@@ -67,25 +57,22 @@ services:
     environment:
       - LITELLM_PROXY_PORT=${LITELLM_PORT-4000}
       - LITELLM_MASTER_KEY=${LITELLM_PROXY_KEY}
-      # If/when you add a routing config and cloud fallback:
       - LITELLM_CONFIG=/etc/litellm/config.yaml
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     command: >
-      litellm
-      --port ${LITELLM_PORT-4000}
-      --host 0.0.0.0
-    ports:
-      - "${LITELLM_PORT-4000}:4000"
+      litellm --port ${LITELLM_PORT-4000} --host 0.0.0.0
+    expose:
+      - "4000"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "wget -qO- http://localhost:4000/health >/dev/null 2>&1 || exit 1",
+          "curl -fsS http://127.0.0.1:4000/health >/dev/null || exit 1",
         ]
       interval: 15s
       timeout: 5s
       retries: 20
-      start_period: 15s
+      start_period: 10s
 
   # GitHub MCP adapter (FastAPI)
   mcp-github:
@@ -98,10 +85,10 @@ services:
       - GITHUB_REPO=${GITHUB_REPO}
       - GITHUB_TOKEN=${GITHUB_TOKEN}
     ports:
-      - "${MCP_GITHUB_PORT-8088}:8088"
+      - "${MCP_GITHUB_PORT:-8088}:8088"
     depends_on:
       qdrant:
-        condition: service_healthy
+        condition: service_started
 
   # Optional: n8n for orchestrating specialist agents (webhooks)
   n8n:
@@ -115,23 +102,23 @@ services:
       - N8N_PORT=5678
       - N8N_DIAGNOSTICS_ENABLED=false
     ports:
-      - "${N8N_PORT-5678}:5678"
+      - "${N8N_PORT:-5678}:5678"
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
       litellm:
-        condition: service_healthy
+        condition: service_started
       qdrant:
-        condition: service_healthy
+        condition: service_started
 
-  # Optional: reverse proxy to front selected services under one port
+  # Reverse proxy (profile: proxy)
   nginx:
     image: nginx:alpine
     container_name: amara-nginx
     profiles: ["proxy"]
     restart: unless-stopped
     ports:
-      - "${NGINX_HTTP_PORT-8080}:80"
+      - "${NGINX_HTTP_PORT:-8080}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
