@@ -33,6 +33,12 @@ repos:
         types: [text]
         exclude: \.venv/|^docs/context/|^docs/vendor/
 
+      - id: forbid-qdrant-recreate
+        name: Forbid Qdrant recreate_collection usage
+        entry: python3 scripts/forbid_strings.py --pattern 'recreate_collection\s*\(' --message 'Do not use Qdrant recreate_collection; prefer create_collection.'
+        language: system
+        types: [python]
+
   - repo: local
     hooks:
       - id: validate-context-delta-log
