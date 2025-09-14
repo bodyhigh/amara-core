@@ -1,8 +1,8 @@
 .PHONY: help venv-install sync verify context-delta validate-log seed-log test-log \
-qdrant-up qdrant-down qdrant-logs embed embed-dry env-check \
-llm-up llm-pull llm-smoke mcp-github-up mcp-github-smoke validate-agent-handoff venv-which validate-agent-handoff \
-sync-dry sync-apply embed-openai qdrant-wipe qdrant-init qdrant-list qdrant-info qdrant-count \
-print-env embed-openai-upsert embed-logs
+	qdrant-up qdrant-down qdrant-logs embed embed-dry env-check \
+	llm-up llm-pull llm-smoke mcp-github-up mcp-github-smoke validate-agent-handoff venv-which validate-agent-handoff \
+	sync-dry sync-apply embed-openai qdrant-wipe qdrant-init qdrant-list qdrant-info qdrant-count \
+	print-env embed-openai-upsert embed-logs
 
 # Defaults (override like: make PY=python3.11)
 SHELL := /bin/sh
@@ -35,6 +35,7 @@ help:
 	@echo "  llm-smoke       - quick POST to LiteLLM /v1/chat/completions"
 	@echo "  mcp-github-up   - start GitHub MCP adapter"
 	@echo "  mcp-github-smoke- health + list issues smoke test"
+	@echo "  embed-logs      - list the most recent embed logs"
 
 venv-install:
 	$(PY) -m venv $(VENV)
@@ -43,7 +44,6 @@ venv-install:
 # Allow 'make sync DRY=1' or 'make sync SYNC_DRY=0'
 sync:
 	. $(VENV)/bin/activate && SYNC_DRY=$(DRY) $(PY) scripts/sync_repos.py
-
 
 verify:
 	pre-commit run --all-files
@@ -192,17 +192,17 @@ qdrant-list:
 	curl -fsS http://localhost:$${QDRANT_PORT:-6333}/collections | jq .
 
 qdrant-info:
-	@curl -fsS "http://localhost:$${QDRANT_PORT:-6333}/collections/$${QDRANT_COLLECTION:-amara_docs}" | jq .
+	@curl -fsS "$${QDRANT_URL:-http://localhost:6333}/collections/$${QDRANT_COLLECTION:-amara_docs}" | jq .
 
 qdrant-count:
 	@curl -fsS -X POST \
-	  "http://localhost:$${QDRANT_PORT:-6333}/collections/$${QDRANT_COLLECTION:-amara_docs}/points/count" \
+	  "$${QDRANT_URL:-http://localhost:6333}/collections/$${QDRANT_COLLECTION:-amara_docs}/points/count" \
 	  -H "Content-Type: application/json" \
 	  -d '{"exact":true}' | jq .
 
 print-env:
 	@echo "From make (autoloaded .env):"
-	@echo "OPENAI_API_KEY=$${OPENAI_API_KEY:+<set>}"
+	@echo "OPENAI_API_KEY=$${OPENAI_API_KEY:+ }"
 	@echo "EMBED_MODE=$(EMBED_MODE)"
 	@echo "EMBED_QDRANT_UPSERT=$(EMBED_QDRANT_UPSERT)"
 	@echo "QDRANT_URL=$(QDRANT_URL)"
@@ -212,3 +212,7 @@ embed-openai-upsert:
 	@mkdir -p artifacts/logs
 	@echo "[embed] starting at $$(date)"
 	@EMBED_MODE=openai EMBED_QDRANT_UPSERT=1 $(PY) scripts/embed.py 2>&1 | tee artifacts/logs/embed.$$(date +%Y%m%d-%H%M%S).log
+
+embed-logs:
+	@ls -1 artifacts/logs 2>/dev/null | tail -n 5 | sed 's#^#artifacts/logs/#'
+	@echo "Tip: tail -f artifacts/logs/<latest>"
