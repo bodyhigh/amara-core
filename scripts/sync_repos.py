@@ -51,6 +51,29 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
+def ensure_dir(p: Path) -> None:
+    """
+    Ensure p is a directory.
+    - If p is a symlink, create the target dir (resolving relative link).
+    - If p is a regular file, remove and replace with a directory.
+    - If p doesn't exist, create it.
+    """
+    if p.exists():
+        if p.is_dir():
+            return
+        if p.is_symlink():
+            # Resolve relative or absolute link WITHOUT requiring it to exist
+            link_target = os.readlink(p)  # may be relative
+            target_path = (p.parent / link_target).resolve()
+            Path(target_path).mkdir(parents=True, exist_ok=True)
+            return
+        # Regular file (or something else): replace with a dir
+        p.unlink()
+        p.mkdir(parents=True, exist_ok=True)
+        return
+    p.mkdir(parents=True, exist_ok=True)
+
+
 try:
     import yaml  # PyYAML
 except Exception:

@@ -15,12 +15,36 @@ import hashlib
 import pathlib
 import importlib
 from typing import List, Dict, Any, Tuple
+from pathlib import Path
+
+def ensure_dir(p: Path) -> None:
+    """
+    Ensure p is a directory.
+    - If p is a symlink, create the target dir (resolving relative link).
+    - If p is a regular file, remove and replace with a directory.
+    - If p doesn't exist, create it.
+    """
+    if p.exists():
+        if p.is_dir():
+            return
+        if p.is_symlink():
+            # Resolve relative or absolute link WITHOUT requiring it to exist
+            link_target = os.readlink(p)  # may be relative
+            target_path = (p.parent / link_target).resolve()
+            Path(target_path).mkdir(parents=True, exist_ok=True)
+            return
+        # Regular file (or something else): replace with a dir
+        p.unlink()
+        p.mkdir(parents=True, exist_ok=True)
+        return
+    p.mkdir(parents=True, exist_ok=True)
+
 
 # Repo paths
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CTX = ROOT / "docs" / "context"
 OUT = ROOT / "artifacts"
-OUT.mkdir(parents=True, exist_ok=True)
+ensure_dir(OUT)
 
 
 # ---------- helpers ----------
