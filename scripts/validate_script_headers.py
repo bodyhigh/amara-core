@@ -12,9 +12,10 @@ import re
 from pathlib import Path
 from typing import Iterable
 
+# Standard Amara script metadata header (regex)
 HEADER = (
-    r"# --- Amara Script Metadata ---\n"
-    r"# Repo:\s*(amara-core|amara-gateway)\n"
+    r"(?:(?://|#)\s*--- Amara Script Metadata ---\s*\n"
+    r"(?://|#)\s*Repo:\s*(amara-core|amara-gateway)\s*\n)"
 )
 
 HEADER_RE = re.compile(HEADER, re.MULTILINE)
