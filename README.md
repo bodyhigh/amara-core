@@ -37,6 +37,33 @@
 
 ---
 
+## Environment Setup
+
+To run locally, copy the provided example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Fill in the following minimum variables:
+
+- **`OPENAI_API_KEY`** — required for embeddings and LiteLLM proxy.
+- **`LITELLM_PROXY_KEY`** — random secret used to authorize `/api/llm/*` requests.
+- **`AMARA_STORAGE`** — path for persistent volumes (Qdrant, artifacts, etc.).
+
+Optional variables:
+
+- **`GITHUB_TOKEN`** — if using the MCP GitHub adapter.
+- **`OLLAMA_MODELS`** — if running local models via Ollama.
+
+💡 Tip: generate a strong LiteLLM proxy key with:
+
+```bash
+echo "LITELLM_PROXY_KEY=$(openssl rand -hex 24)" >> .env
+```
+
+---
+
 ## Quickstart
 
 Clone and set up the repo:
@@ -97,9 +124,11 @@ CI workflow is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 For embedding with OpenAI:
 
 - **Local**: copy `.env.example` to `.env` and fill in values:
+
   ```bash
   cp .env.example .env
   ```
+
 - **CI**: add a GitHub Actions Secret named **`OPENAI_API_KEY`**.
   It will be available as `secrets.OPENAI_API_KEY` inside workflows.
 
@@ -127,6 +156,7 @@ amara-core/
 - All commits must be **SSH-signed**.
 - Branch protection requires PRs + passing `pre-commit` check.
 - Pre-commit hooks include:
+
   - `validate-amara-script-headers`
   - `forbid-legacy compose v1 CLI-v1-cli`
   - `forbid-secret-patterns`
