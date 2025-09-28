@@ -19,8 +19,23 @@ services:
     environment:
       # QDRANT__STORAGE__USE_MMAP: "false"   # enable on low-RAM hosts if needed
       QDRANT__SERVICE__GRPC_PORT: 6334
+    #   QDRANT__STORAGE__ON_DISK_PAYLOAD: "true"   # already the effective default you saw
+    #   QDRANT__OPTIMIZATIONS__MEMMAP_THRESHOLD: "20000"
+    # ulimits:
+    #   memlock: { soft: -1, hard: -1 }            # only if you tune mmap/high-RAM
+
     volumes:
       - ${AMARA_STORAGE:-/mnt/storage}/qdrant:/qdrant/storage
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://127.0.0.1:${QDRANT_PORT:-6333}/readyz >/dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   ollama:
     image: ollama/ollama:latest
@@ -36,12 +51,18 @@ services:
       test:
         [
           "CMD-SHELL",
-          "OLLAMA_HOST=127.0.0.1:11434 ollama ps >/dev/null 2>&1 || exit 1",
+          "OLLAMA_HOST=127.0.0.1:${OLLAMA_PORT:-11434} ollama ps >/dev/null 2>&1 || exit 1",
         ]
       interval: 10s
       timeout: 5s
       retries: 30
       start_period: 45s
+    profiles: ["gpu"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
 
   litellm:
     build:
@@ -62,12 +83,12 @@ services:
     command: >
       litellm --port ${LITELLM_PORT-4000} --host 0.0.0.0
     expose:
-      - "4000"
+      - "${LITELLM_PORT-4000}"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "curl -fsS http://127.0.0.1:4000/health >/dev/null || exit 1",
+          "curl -fsS http://127.0.0.1:${LITELLM_PORT-4000}/health >/dev/null || exit 1",
         ]
       interval: 15s
       timeout: 5s
@@ -126,3 +147,12 @@ services:
         condition: service_started
       n8n:
         condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:${NGINX_HTTP_PORT:-8080}/ || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10

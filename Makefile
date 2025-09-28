@@ -140,10 +140,15 @@ qdrant-logs:
 	$(COMPOSE) logs -f qdrant
 
 qdrant-reset-collection:
+	@echo "This will delete ALL points in '$${QDRANT_COLLECTION:-amara_docs}' at $${QDRANT_URL:-http://localhost:6333}"
+	@read -r -p "Type 'YES' to continue: " ans; \
+	if [ "$$ans" != "YES" ]; then echo "Aborted."; exit 1; fi
 	@curl -fsS -X POST \
 	  "$${QDRANT_URL:-http://localhost:6333}/collections/$${QDRANT_COLLECTION:-amara_docs}/points/delete" \
 	  -H "Content-Type: application/json" \
-	  -d '{"filter": {"must": []}}' | jq .
+	  -d '{"filter":{"must":[]}}' | jq .
+	@echo "Done. Points deleted; collection metadata preserved."
+
 
 embed-dry: ensure-venv
 	$(PY) scripts/embed.py
