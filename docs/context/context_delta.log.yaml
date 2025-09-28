@@ -121,3 +121,27 @@ entries:
           due: 2025-10-01
       risks:
         - "Developers may forget to regenerate LITELLM_PROXY_KEY if rolling secrets; mitigation: README points to openssl command."
+  - context_delta:
+      status:
+        summary: >
+          Introduced the Assessment Framework (assessments/, assessors/, meta-assessors/, prompts/, runbooks/).
+          Seeded starter prompts and sprint close checklist. This establishes the process
+          to run Assessment → Assessor → Meta-Assessor each sprint.
+        last_updated: 2025-09-28
+
+      decisions:
+        - date: 2025-09-28
+          what: Add Assessment Framework scaffolding to repo.
+          why: Needed structured process to evaluate sprints and capture lessons systematically.
+
+      next_actions:
+        - who: me
+          what: Commit scaffolded directories and seed prompts.
+          due: 2025-09-28
+        - who: assistant
+          what: Stage Assessment, Assessor, and Meta-Assessor docs under new framework.
+          due: 2025-09-28
+
+      risks:
+        - "Framework adds overhead; mitigation: keep Assessment prompts lightweight (strict format, markdown)."
+        - "Possible divergence between amara-core and project-glidepath processes; mitigation: align prompts quarterly."
