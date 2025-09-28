@@ -15,3 +15,7 @@ tmp_delta.yaml
 artifacts/logs/
 # (Optional) any other logs generated under artifacts
 artifacts/*.log
+
+# Git patches
+git.patch
+artifacts

@@ -1,0 +1,65 @@
+cat > make-storage.patch <<'PATCH'
+diff --git a/Makefile b/Makefile
+--- a/Makefile
++++ b/Makefile
+@@ -1,12 +1,16 @@
+ .PHONY: help venv-install sync verify context-delta validate-log seed-log test-log \
+ 	qdrant-up qdrant-down qdrant-logs embed embed-dry env-check \
+ 	llm-up llm-pull llm-smoke mcp-github-up mcp-github-smoke validate-agent-handoff venv-which validate-agent-handoff \
+ 	sync-dry sync-apply embed-openai qdrant-wipe qdrant-init qdrant-list qdrant-info qdrant-count \
+ 	print-env embed-openai-upsert embed-logs
+
+ # Defaults (override like: make PY=python3.11)
+ SHELL := /bin/sh
+ PY ?= python3
+ COMPOSE ?= docker compose
+ VENV ?= .venv
++#
++# Storage settings
++AMARA_STORAGE ?= /mnt/storage
++ARTIFACTS_DIR := $(AMARA_STORAGE)/amara-artifacts
+
+ ifneq (,$(wildcard .env))
+   include .env
+@@ -142,6 +146,17 @@ qdrant-count:
+ 	  -H "Content-Type: application/json" \
+ 	  -d '{"exact":true}' | jq .
+
++# Ensure artifacts/ symlink points to $(ARTIFACTS_DIR)
++artifacts-link:
++	@mkdir -p "$(ARTIFACTS_DIR)"
++	@if [ ! -L artifacts ]; then \
++	  ln -s "$(ARTIFACTS_DIR)" artifacts; \
++	  echo "Created symlink: artifacts -> $(ARTIFACTS_DIR)"; \
++	fi
++
+ print-env:
+ 	@echo "From make (autoloaded .env):"
+ 	@echo "OPENAI_API_KEY=$${OPENAI_API_KEY:+ }"
+ 	@echo "EMBED_MODE=$(EMBED_MODE)"
+ 	@echo "EMBED_QDRANT_UPSERT=$(EMBED_QDRANT_UPSERT)"
+ 	@echo "QDRANT_URL=$(QDRANT_URL)"
+ 	@echo "QDRANT_COLLECTION=$(QDRANT_COLLECTION)"
++	@echo "AMARA_STORAGE=$(AMARA_STORAGE)"
++	@echo "ARTIFACTS_DIR=$(ARTIFACTS_DIR)"
+
+@@ -151,12 +166,16 @@ print-env:
+ 	@echo "Tip: tail -f artifacts/logs/<latest>"
+
+ embed-openai-upsert:
+-	@mkdir -p artifacts/logs
+-	@echo "[embed] starting at $$(date)"
+-	@EMBED_MODE=openai EMBED_QDRANT_UPSERT=1 $(PY) scripts/embed.py 2>&1 | tee artifacts/logs/embed.$$(date +%Y%m%d-%H%M%S).log
++	@$(MAKE) artifacts-link
++	@mkdir -p "$(ARTIFACTS_DIR)/logs"
++	@echo "[embed] starting at $$(date)"
++	@EMBED_MODE=openai EMBED_QDRANT_UPSERT=1 $(PY) scripts/embed.py 2>&1 | \
++	  tee "$(ARTIFACTS_DIR)/logs/embed.$$(date +%Y%m%d-%H%M%S).log"
+
+ embed-logs:
+-	@ls -1 artifacts/logs 2>/dev/null | tail -n 5 | sed 's#^#artifacts/logs/#'
++	@$(MAKE) artifacts-link
++	@ls -1 "$(ARTIFACTS_DIR)/logs" 2>/dev/null | tail -n 5 | \
++	  sed 's#^#$(ARTIFACTS_DIR)/logs/#'
+ 	@echo "Tip: tail -f artifacts/logs/<latest>"
+PATCH
