@@ -14,6 +14,7 @@ entries:
           due: 2025-08-26
       risks:
         - "Accidental schema drift; mitigation: pre-commit validator"
+
   - context_delta:
       status:
         summary: >
@@ -36,7 +37,7 @@ entries:
   - context_delta:
       status:
         summary: >
-          Invalid entry (missing risks).
+          Invalid entry (missing risks). Kept for historical test purposes.
         last_updated: 2025-08-26
       decisions:
         - date: 2025-08-26
@@ -46,24 +47,53 @@ entries:
         - who: me
           what: "This should fail schema"
           due: 2025-08-26
+      risks:
+        - "Schema intentionally broken in this entry for testing"
 
-context_delta:
-  status:
-    summary: >
-      Added a YAML-driven repo sync tool (sync_repos.py), an env/deps sanity checker,
-      and an optional pretty logger for shell scripts. Sync is dry-run by default and
-      writes an artifacts/sync.report.json.
-    last_updated: 2025-08-26
-  decisions:
-    - date: 2025-08-26
-      what: Stage cross-repo documents into docs/context via an allowlist-defined sync tool.
-      why: Deterministic inputs for RAG; keeps history reviewable.
-  next_actions:
-    - who: me
-      what: Create docs/sources.yaml (or update), run `make sync` (dry), inspect artifacts/sync.report.json; then run with SYNC_DRY=0.
-      due: 2025-08-27
-    - who: me
-      what: Run `make env-check` before embeddings to avoid surprise failures.
-      due: 2025-08-27
-  risks:
-    - Over-inclusion of files; mitigation: strict allowlist + deny patterns, review sync.report.json before real copy.
+  - context_delta:
+      status:
+        summary: >
+          Added a YAML-driven repo sync tool (sync_repos.py), an env/deps sanity checker,
+          and an optional pretty logger for shell scripts. Sync is dry-run by default and
+          writes an artifacts/sync.report.json.
+        last_updated: 2025-08-26
+      decisions:
+        - date: 2025-08-26
+          what: "Stage cross-repo documents into docs/context via an allowlist-defined sync tool."
+          why: "Deterministic inputs for RAG; keeps history reviewable."
+      next_actions:
+        - who: me
+          what: "Create docs/sources.yaml (or update), run `make sync` (dry), inspect artifacts/sync.report.json; then run with SYNC_DRY=0."
+          due: 2025-08-27
+        - who: me
+          what: "Run `make env-check` before embeddings to avoid surprise failures."
+          due: 2025-08-27
+      risks:
+        - "Over-inclusion of files; mitigation: strict allowlist + deny patterns, review sync.report.json before real copy."
+
+  - context_delta:
+      status:
+        summary: >
+          LiteLLM proxy stabilized (OpenAI-only), SSE-safe via NGINX, Authorization forwarded.
+          Pipeline is green on master; tagged v0.1.0 as first healthy baseline.
+        last_updated: 2025-09-28
+      decisions:
+        - date: 2025-09-28
+          what: "Require master key auth for /api/llm/* proxied through NGINX"
+          why: "Secure LiteLLM admin/control plane"
+        - date: 2025-09-28
+          what: "Disable Ollama until GPU/CPU runtime available"
+          why: "Prevent 500s and container drift"
+      next_actions:
+        - who: assistant
+          what: "Extend smoke tests to hit /api/llm/v1/chat/completions (streaming)"
+          due: 2025-10-01
+        - who: me
+          what: "Tighten CORS to amara.bodyhigh.com"
+          due: 2025-10-01
+        - who: me
+          what: "Add structured access logs & rotation under app_data/*"
+          due: 2025-10-05
+      risks:
+        - "Need to revisit Ollama integration; GPU runtime missing"
+        - "Future embedding updates must preserve guardrails (no recreate_collection)"
