@@ -17,13 +17,7 @@ services:
     ports:
       - "${QDRANT_PORT:-6333}:6333"
     environment:
-      # QDRANT__STORAGE__USE_MMAP: "false"   # enable on low-RAM hosts if needed
       QDRANT__SERVICE__GRPC_PORT: 6334
-    #   QDRANT__STORAGE__ON_DISK_PAYLOAD: "true"   # already the effective default you saw
-    #   QDRANT__OPTIMIZATIONS__MEMMAP_THRESHOLD: "20000"
-    # ulimits:
-    #   memlock: { soft: -1, hard: -1 }            # only if you tune mmap/high-RAM
-
     volumes:
       - ${AMARA_STORAGE:-/mnt/storage}/qdrant:/qdrant/storage
     healthcheck:
@@ -37,32 +31,32 @@ services:
       retries: 20
       start_period: 10s
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: amara-ollama
-    restart: unless-stopped
-    ports:
-      - "${OLLAMA_PORT:-11434}:11434"
-    environment:
-      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE-8h}
-    volumes:
-      - ${AMARA_STORAGE:-/mnt/storage}/ollama:/root/.ollama
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "OLLAMA_HOST=127.0.0.1:${OLLAMA_PORT:-11434} ollama ps >/dev/null 2>&1 || exit 1",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 45s
-    profiles: ["gpu"]
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: ["gpu"]
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: amara-ollama
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${OLLAMA_PORT:-11434}:11434"
+  #   environment:
+  #     - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE-8h}
+  #   volumes:
+  #     - ${AMARA_STORAGE:-/mnt/storage}/ollama:/root/.ollama
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "OLLAMA_HOST=127.0.0.1:${OLLAMA_PORT:-11434} ollama ps >/dev/null 2>&1 || exit 1",
+  #       ]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 30
+  #     start_period: 45s
+  #   profiles: ["gpu"]
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - capabilities: ["gpu"]
 
   litellm:
     build:
@@ -70,25 +64,24 @@ services:
       dockerfile: Dockerfile
     container_name: amara-litellm
     restart: unless-stopped
-    depends_on:
-      ollama:
-        condition: service_healthy
     volumes:
       - ./ops/litellm/config.yaml:/etc/litellm/config.yaml:ro
     environment:
-      - LITELLM_PROXY_PORT=${LITELLM_PORT-4000}
-      - LITELLM_MASTER_KEY=${LITELLM_PROXY_KEY}
+      - PORT=${LITELLM_PORT-4000}
       - LITELLM_CONFIG=/etc/litellm/config.yaml
+      - LITELLM_MASTER_KEY=${LITELLM_PROXY_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     command: >
       litellm --port ${LITELLM_PORT-4000} --host 0.0.0.0
+      --config /etc/litellm/config.yaml
     expose:
       - "${LITELLM_PORT-4000}"
     healthcheck:
+      # Send Authorization header because MASTER_KEY is enabled
       test:
         [
           "CMD-SHELL",
-          "curl -fsS http://127.0.0.1:${LITELLM_PORT-4000}/health >/dev/null || exit 1",
+          'curl -fsS -H "Authorization: Bearer ${LITELLM_PROXY_KEY}" http://127.0.0.1:${LITELLM_PORT-4000}/health >/dev/null || exit 1',
         ]
       interval: 15s
       timeout: 5s
@@ -117,7 +110,7 @@ services:
     container_name: amara-n8n
     restart: unless-stopped
     environment:
-      - GENERIC_TIMEZONE=${TZ-America/Los_Angeles}
+      - GENERIC_TIMEZONE=${TZ:-America/Los_Angeles}
       - N8N_HOST=localhost
       - N8N_PROTOCOL=http
       - N8N_PORT=5678
@@ -134,25 +127,22 @@ services:
 
   # Reverse proxy (profile: proxy)
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     container_name: amara-nginx
     profiles: ["proxy"]
     restart: unless-stopped
     ports:
       - "${NGINX_HTTP_PORT:-8080}:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
     depends_on:
       litellm:
         condition: service_started
       n8n:
         condition: service_started
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget -qO- http://127.0.0.1:${NGINX_HTTP_PORT:-8080}/ || exit 1",
-        ]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"] # ← no port; hits :80 inside
       interval: 15s
       timeout: 5s
       retries: 10
