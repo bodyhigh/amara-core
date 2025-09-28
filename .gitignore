@@ -18,3 +18,4 @@ artifacts/*.log
 
 # Git patches
 git.patch
+artifacts
