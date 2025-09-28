@@ -97,3 +97,27 @@ entries:
       risks:
         - "Need to revisit Ollama integration; GPU runtime missing"
         - "Future embedding updates must preserve guardrails (no recreate_collection)"
+
+  - context_delta:
+      status:
+        summary: >
+          Added `.env.example` with clear environment variables, updated README.md
+          with "Environment Setup" section. Improves onboarding and ensures proxy
+          key usage is documented. Repo state is green.
+        last_updated: 2025-09-28
+      decisions:
+        - date: 2025-09-28
+          what: "Track .env.example in repo (exception in .gitignore)."
+          why: "Needed for onboarding while keeping real secrets untracked."
+        - date: 2025-09-28
+          what: "Add Environment Setup section in README."
+          why: "Provide one-step onboarding instructions for new developers."
+      next_actions:
+        - who: me
+          what: "Commit and push staged README.md and .env.example changes."
+          due: 2025-09-29
+        - who: assistant
+          what: "Extend smoke tests to cover /api/llm/v1/chat/completions (streaming)."
+          due: 2025-10-01
+      risks:
+        - "Developers may forget to regenerate LITELLM_PROXY_KEY if rolling secrets; mitigation: README points to openssl command."
