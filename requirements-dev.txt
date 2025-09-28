@@ -6,3 +6,4 @@ pre-commit==3.7.1
 # sentence-transformers
 qdrant-client==1.12.*
 # torch
+openai>=1.40.0,<2

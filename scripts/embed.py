@@ -10,6 +10,7 @@
 import os
 import sys
 import json
+import uuid
 import hashlib
 import pathlib
 import importlib
@@ -68,6 +69,8 @@ def try_openai_embed(chunks: List[Tuple[str, str]]) -> List[Dict[str, Any]]:
 	api_key = os.getenv("OPENAI_API_KEY")
 	if not api_key:
 		raise RuntimeError("OPENAI_API_KEY not set")
+	if api_key.strip() != api_key:
+		raise RuntimeError("OPENAI_API_KEY contains whitespace; please remove trailing spaces/newlines")
 
 	try:
 		openai_mod = importlib.import_module("openai")
@@ -161,8 +164,19 @@ def maybe_qdrant_upsert(records: List[Dict[str, Any]]) -> None:
 		)
 		created = True
 
+	def _to_uuid(s: str) -> str:
+		"""
+		Deterministically map our content id (sha1 string) to a UUIDv5,
+		which Qdrant accepts as a valid point ID type.
+		"""
+		return str(uuid.uuid5(uuid.NAMESPACE_URL, s))
+
 	points = [
-		qm.PointStruct(id=r["id"], vector=r["embedding"], payload={"len": r["len"]})
+		qm.PointStruct(
+			id=_to_uuid(r["id"]),
+			vector=r["embedding"],
+			payload={"source_id": r["id"], "len": r["len"]},
+		)
 		for r in records
 	]
 	client.upsert(collection_name=collection, points=points)

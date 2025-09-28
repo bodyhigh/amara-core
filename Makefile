@@ -1,14 +1,22 @@
 .PHONY: help venv-install sync verify context-delta validate-log seed-log test-log \
-	qdrant-up qdrant-down qdrant-logs embed embed-dry env-check \
+	qdrant-up qdrant-down qdrant-logs qdrant-reset-collection embed embed-dry env-check \
 	llm-up llm-pull llm-smoke mcp-github-up mcp-github-smoke validate-agent-handoff venv-which validate-agent-handoff \
 	sync-dry sync-apply embed-openai qdrant-wipe qdrant-init qdrant-list qdrant-info qdrant-count \
-	print-env embed-openai-upsert embed-logs
+	print-env embed-openai-upsert embed-logs ensure-venv
 
 # Defaults (override like: make PY=python3.11)
 SHELL := /bin/sh
 PY ?= python3
 COMPOSE ?= docker compose
 VENV ?= .venv
+
+# Always prefer the repo venv
+PY := $(VENV)/bin/python
+PIP := $(VENV)/bin/pip
+
+# Storage settings
+AMARA_STORAGE ?= /mnt/storage
+ARTIFACTS_DIR := $(AMARA_STORAGE)/amara-artifacts
 
 ifneq (,$(wildcard .env))
   include .env
@@ -131,10 +139,16 @@ qdrant-down:
 qdrant-logs:
 	$(COMPOSE) logs -f qdrant
 
-embed-dry:
+qdrant-reset-collection:
+	@curl -fsS -X POST \
+	  "$${QDRANT_URL:-http://localhost:6333}/collections/$${QDRANT_COLLECTION:-amara_docs}/points/delete" \
+	  -H "Content-Type: application/json" \
+	  -d '{"filter": {"must": []}}' | jq .
+
+embed-dry: ensure-venv
 	$(PY) scripts/embed.py
 
-embed:
+embed: ensure-venv
 	EMBED_MODE=openai $(PY) scripts/embed.py
 
 env-check:
@@ -200,6 +214,14 @@ qdrant-count:
 	  -H "Content-Type: application/json" \
 	  -d '{"exact":true}' | jq .
 
+# Ensure artifacts/ symlink points to $(ARTIFACTS_DIR)
+artifacts-link:
+	@mkdir -p "$(ARTIFACTS_DIR)"
+	@if [ ! -L artifacts ]; then \
+	  ln -s "$(ARTIFACTS_DIR)" artifacts; \
+	  echo "Created symlink: artifacts -> $(ARTIFACTS_DIR)"; \
+	fi
+
 print-env:
 	@echo "From make (autoloaded .env):"
 	@echo "OPENAI_API_KEY=$${OPENAI_API_KEY:+ }"
@@ -207,12 +229,22 @@ print-env:
 	@echo "EMBED_QDRANT_UPSERT=$(EMBED_QDRANT_UPSERT)"
 	@echo "QDRANT_URL=$(QDRANT_URL)"
 	@echo "QDRANT_COLLECTION=$(QDRANT_COLLECTION)"
+	@echo "AMARA_STORAGE=$(AMARA_STORAGE)"
+	@echo "ARTIFACTS_DIR=$(ARTIFACTS_DIR)"
 
-embed-openai-upsert:
-	@mkdir -p artifacts/logs
+embed-openai-upsert: ensure-venv
+	@$(MAKE) artifacts-link
+	@mkdir -p "$(ARTIFACTS_DIR)/logs"
 	@echo "[embed] starting at $$(date)"
-	@EMBED_MODE=openai EMBED_QDRANT_UPSERT=1 $(PY) scripts/embed.py 2>&1 | tee artifacts/logs/embed.$$(date +%Y%m%d-%H%M%S).log
+	@EMBED_MODE=openai EMBED_QDRANT_UPSERT=1 $(PY) scripts/embed.py 2>&1 | \
+	  tee "$(ARTIFACTS_DIR)/logs/embed.$$(date +%Y%m%d-%H%M%S).log"
 
 embed-logs:
-	@ls -1 artifacts/logs 2>/dev/null | tail -n 5 | sed 's#^#artifacts/logs/#'
+	@$(MAKE) artifacts-link
+	@ls -1 "$(ARTIFACTS_DIR)/logs" 2>/dev/null | tail -n 5 | \
+	  sed 's#^#$(ARTIFACTS_DIR)/logs/#'
 	@echo "Tip: tail -f artifacts/logs/<latest>"
+
+ensure-venv:
+	@test -x "$(VENV)/bin/python" || python3 -m venv "$(VENV)"
+	@$(PIP) install -U pip -r requirements-dev.txt

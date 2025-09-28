@@ -20,7 +20,7 @@ services:
       # QDRANT__STORAGE__USE_MMAP: "false"   # enable on low-RAM hosts if needed
       QDRANT__SERVICE__GRPC_PORT: 6334
     volumes:
-      - qdrant_data:/qdrant/storage
+      - ${AMARA_STORAGE:-/mnt/storage}/qdrant:/qdrant/storage
 
   ollama:
     image: ollama/ollama:latest
@@ -31,7 +31,7 @@ services:
     environment:
       - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE-8h}
     volumes:
-      - ollama_data:/root/.ollama
+      - ${AMARA_STORAGE:-/mnt/storage}/ollama:/root/.ollama
     healthcheck:
       test:
         [
@@ -104,7 +104,7 @@ services:
     ports:
       - "${N8N_PORT:-5678}:5678"
     volumes:
-      - n8n_data:/home/node/.n8n
+      - ${AMARA_STORAGE:-/mnt/storage}/n8n:/home/node/.n8n
     depends_on:
       litellm:
         condition: service_started
@@ -126,8 +126,3 @@ services:
         condition: service_started
       n8n:
         condition: service_started
-
-volumes:
-  qdrant_data:
-  ollama_data:
-  n8n_data:
