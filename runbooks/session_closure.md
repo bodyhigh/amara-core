@@ -27,8 +27,7 @@ This runbook defines the process for cleanly closing out a development session f
 
 ## 3. Developer Log Template
 
-```
-
+```markdown
 # Developer Log — <DATE>
 
 ## Summary
@@ -37,16 +36,15 @@ This runbook defines the process for cleanly closing out a development session f
 
 ## Decisions
 
-* …
+- …
 
 ## Risks / Issues
 
-* …
+- …
 
 ## Next Steps
 
-* …
-
+- …
 ```
 
 ---

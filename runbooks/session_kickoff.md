@@ -17,7 +17,6 @@ This runbook defines the process for starting a new development session for the 
 Copy and paste this prompt into the first message of the new chat session:
 
 ```
-
 You are resuming the Amara Core home chat.
 
 1. Load the latest Context Bundle (v1.1).
