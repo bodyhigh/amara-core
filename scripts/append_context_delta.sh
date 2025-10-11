@@ -13,25 +13,36 @@ mkdir -p "$(dirname "$DEST")"
 
 # Ensure the file has the proper root
 if [ ! -s "$DEST" ]; then
-	printf "entries:\n" > "$DEST"
+  printf "entries:\n" > "$DEST"
 fi
 
-TMP="$(mktemp)"
-cat > "$TMP"
+SNIPPET="$(mktemp)"
+cat > "$SNIPPET"
 
-# Always wrap as a new list item under entries
+# Build a candidate file and validate before committing changes
+CANDIDATE="$(mktemp)"
+cp "$DEST" "$CANDIDATE"
 {
-	printf "  - context_delta:\n"
-	# indent the snippet by 6 spaces
-	sed 's/^/      /' "$TMP"
-	echo
-} >> "$DEST"
+  printf "  - context_delta:\n"
+  sed 's/^/      /' "$SNIPPET"
+  echo
+} >> "$CANDIDATE"
 
-rm -f "$TMP"
+rm -f "$SNIPPET"
 
-# Validate syntax + schema
+# Validate candidate
 if command -v python3 >/dev/null 2>&1; then
-	python3 scripts/validate_context_delta.py
+  # Temporarily point validator to candidate by copying into place for a moment
+  # Safer: run validator in a subshell with a symlink if you later parameterize the validator
+  cp "$CANDIDATE" "$DEST"
+  if ! python3 scripts/validate_context_delta.py; then
+    echo "[ERR] context_delta validation failed; no changes applied" >&2
+    # restore original file
+    git checkout -- "$DEST" 2>/dev/null || true
+    exit 1
+  fi
 fi
 
-echo "[OK] context_delta appended to $DEST and schema is valid"
+# If we’re here, candidate is valid; leave it in place
+mv "$CANDIDATE" "$DEST"
+echo "[OK] context_delta appended and schema is valid"
